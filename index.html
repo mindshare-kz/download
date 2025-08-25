@@ -9,12 +9,10 @@
     body { font-family: system-ui, Arial, sans-serif; max-width: 1000px; margin: 24px auto; padding: 0 16px; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
     select, button { padding: 8px 12px; font-size: 14px; }
-    button { cursor: pointer; }
-    #status { margin-top: 12px; }
     table { width: 100%; border-collapse: collapse; margin-top: 12px; }
     th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
     .muted { color: #666; font-size: 13px; }
-    .links a { display: inline-block; margin-right: 10px; }
+    .links a, .links button { display: inline-block; margin-right: 10px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -24,15 +22,12 @@
     <label>Бренд:
       <select id="brand"><option value="">— все —</option></select>
     </label>
-
     <label>Категория:
       <select id="category"><option value="">— все —</option></select>
     </label>
-
     <label>Месяц:
       <select id="month"><option value="">— все —</option></select>
     </label>
-
     <button id="btn-download">Скачать ZIP</button>
   </div>
 
@@ -54,13 +49,12 @@
   <div id="zip-links" class="links"></div>
 
   <script>
-    // ↓↓↓ замените на вашу ссылку CSV ↓↓↓
+    // ТВОЙ CSV:
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
-    // ↓↓↓ и на URL веб-приложения Apps Script ↓↓↓
+    // ТВОЙ GAS:
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzX_hG7vy8TTzKLXwBD-H4sbfuwpm8MmJyVDZnbPY3n8RpckZxKDSQ7aolEoBpMxzXt/exec";
 
-    // Максимум файлов в одном архиве (чтобы не упираться в квоты Apps Script)
-    const CHUNK_SIZE = 200;
+    const CHUNK_SIZE = 200; // можно уменьшить/увеличить
 
     let rows = [];
 
@@ -129,77 +123,60 @@
       document.getElementById("status").textContent = `Найдено файлов: ${filtered.length}`;
     }
 
-    async function postJSON(url, payload) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("Request failed: " + res.status);
-      return res.json();
+    function postViaForm(ids, name) {
+      // создаём скрытую форму и отправляем в новую вкладку
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = '_blank';
+
+      const inputIds = document.createElement('input');
+      inputIds.type = 'hidden';
+      inputIds.name = 'ids';
+      inputIds.value = JSON.stringify(ids);
+
+      const inputName = document.createElement('input');
+      inputName.type = 'hidden';
+      inputName.name = 'name';
+      inputName.value = name;
+
+      form.appendChild(inputIds);
+      form.appendChild(inputName);
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
     }
 
-    async function downloadZip() {
+    function downloadZip() {
       const filtered = getFiltered();
-      const ids = filtered
-        .map(r => extractDriveId(r.File))
-        .filter(Boolean);
-
-      if (!ids.length) {
-        alert("Нет файлов для архива.");
-        return;
-      }
+      const ids = filtered.map(r => extractDriveId(r.File)).filter(Boolean);
+      if (!ids.length) { alert("Нет файлов для архива."); return; }
 
       document.getElementById("status").textContent = "Готовлю архив(ы)…";
-      document.getElementById("zip-links").innerHTML = "";
-
-      // чанки, чтобы не упираться в лимиты скрипта
-      const chunks = [];
-      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-        chunks.push(ids.slice(i, i + CHUNK_SIZE));
-      }
-
       const nameBase = [
         document.getElementById("brand").value || "AllBrands",
         document.getElementById("category").value || "AllCategories",
         document.getElementById("month").value || "AllMonths"
       ].join("_");
 
-      const linksDiv = document.getElementById("zip-links");
-
-      for (let i = 0; i < chunks.length; i++) {
-        try {
-          const data = await postJSON(GAS_URL, { ids: chunks[i], name: nameBase + (chunks.length > 1 ? `_part${i+1}` : "") });
-          if (data && data.archiveUrl) {
-            const a = document.createElement("a");
-            a.href = data.archiveUrl;
-            a.target = "_blank";
-            a.rel = "noopener";
-            a.textContent = `Скачать ZIP ${i+1}/${chunks.length} (${data.count} файлов)`;
-            linksDiv.appendChild(a);
-          } else {
-            const span = document.createElement("span");
-            span.textContent = "Ошибка при создании архива (нет ссылки).";
-            linksDiv.appendChild(span);
-          }
-        } catch (e) {
-          const span = document.createElement("span");
-          span.textContent = "Ошибка загрузки архива: " + e.message;
-          linksDiv.appendChild(span);
+      if (ids.length <= CHUNK_SIZE) {
+        postViaForm(ids, nameBase);
+      } else {
+        // режем на части — для каждой части откроется отдельная вкладка
+        for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+          const chunk = ids.slice(i, i + CHUNK_SIZE);
+          postViaForm(chunk, nameBase + `_part${(i/CHUNK_SIZE)+1}`);
         }
       }
-
-      document.getElementById("status").textContent = "Готово.";
+      document.getElementById("status").textContent = "Архив(ы) готовятся… Если вкладки блокируются — разрешите всплывающие окна для сайта.";
     }
 
     document.getElementById("btn-download").addEventListener("click", downloadZip);
 
-    // Загрузка CSV
     Papa.parse(CSV_URL, {
       download: true,
       header: true,
       complete: (res) => {
-        // фильтруем пустые строки и без ссылки
         rows = res.data.filter(r => r && r.File && r.File.trim() !== "");
         renderFilters(rows);
         renderTable();
