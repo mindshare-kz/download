@@ -8,126 +8,131 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-  <h2>Фильтрация фото</h2>
+  <h1>Фильтр фото</h1>
 
   <label>Категория:
-    <select id="categoryFilter">
-      <option value="">Все</option>
-    </select>
+    <select id="categoryFilter"></select>
   </label>
-
-  <label>Субкатегория:
-    <select id="subcategoryFilter">
-      <option value="">Все</option>
-    </select>
+  <label>Подкатегория:
+    <select id="subcategoryFilter"></select>
   </label>
-
   <label>Бренд:
-    <select id="brandFilter">
-      <option value="">Все</option>
-    </select>
+    <select id="brandFilter"></select>
   </label>
+  <button onclick="applyFilters()">Применить фильтр</button>
+  <button onclick="downloadZip()">Скачать ZIP</button>
 
-  <button onclick="downloadZip()">Скачать архив</button>
+  <div id="fileList"></div>
 
-  <h3>Найденные файлы:</h3>
-  <ul id="fileList"></ul>
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
 
-  <script>
-    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
-    let data = [];
+// ⚡ Вставь сюда URL твоего Google Apps Script (Deploy → web app)
+const DRIVE_PROXY = "https://script.google.com/macros/s/AKfycbzX_hG7vy8TTzKLXwBD-H4sbfuwpm8MmJyVDZnbPY3n8RpckZxKDSQ7aolEoBpMxzXt/exec";
 
-    // Загружаем CSV
-    Papa.parse(csvUrl, {
-      download: true,
-      header: true,
-      complete: function(results) {
-        data = results.data;
-        populateFilters();
-        renderList();
-      }
-    });
+let allData = [];
+let filteredData = [];
 
-    function populateFilters() {
-      fillSelect("categoryFilter", [...new Set(data.map(d => d.Category))]);
-      fillSelect("subcategoryFilter", [...new Set(data.map(d => d.Subcategory))]);
-      fillSelect("brandFilter", [...new Set(data.map(d => d.Brand))]);
+Papa.parse(CSV_URL, {
+  download: true,
+  header: true,
+  complete: function(results) {
+    allData = results.data;
+    populateFilters();
+    applyFilters();
+  }
+});
+
+function populateFilters() {
+  const categories = [...new Set(allData.map(r => r.Category).filter(Boolean))];
+  const subcategories = [...new Set(allData.map(r => r.Subcategory).filter(Boolean))];
+  const brands = [...new Set(allData.map(r => r.Brand).filter(Boolean))];
+
+  fillSelect("categoryFilter", categories);
+  fillSelect("subcategoryFilter", subcategories);
+  fillSelect("brandFilter", brands);
+}
+
+function fillSelect(id, values) {
+  const select = document.getElementById(id);
+  select.innerHTML = "<option value=''>Все</option>";
+  values.forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    select.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  const cat = document.getElementById("categoryFilter").value;
+  const subcat = document.getElementById("subcategoryFilter").value;
+  const brand = document.getElementById("brandFilter").value;
+
+  filteredData = allData.filter(r =>
+    (!cat || r.Category === cat) &&
+    (!subcat || r.Subcategory === subcat) &&
+    (!brand || r.Brand === brand)
+  );
+
+  renderList();
+}
+
+function renderList() {
+  const container = document.getElementById("fileList");
+  container.innerHTML = "";
+  filteredData.forEach((row, i) => {
+    const fileId = extractFileId(row.File);
+    const link = fileId ? getProxyUrl(fileId) : "#";
+    container.innerHTML += `<div>${i+1}. ${row.Brand} — <a href="${link}" target="_blank">Открыть фото</a></div>`;
+  });
+}
+
+function extractFileId(url) {
+  const m = url.match(/[-\w]{25,}/);
+  return m ? m[0] : null;
+}
+
+function getProxyUrl(fileId) {
+  return `${DRIVE_PROXY}?id=${fileId}`;
+}
+
+async function downloadZip() {
+  if (filteredData.length === 0) {
+    alert("Нет файлов для скачивания");
+    return;
+  }
+
+  const zip = new JSZip();
+  let count = 0;
+
+  for (let row of filteredData) {
+    const fileId = extractFileId(row.File);
+    if (!fileId) continue;
+
+    try {
+      const url = getProxyUrl(fileId);
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+
+      const blob = await resp.blob();
+      // расширение по типу файла
+      const ext = blob.type.includes("png") ? "png" : "jpg";
+      zip.file(`${row.Brand}_${fileId}.${ext}`, blob);
+      count++;
+    } catch (e) {
+      console.error("Ошибка загрузки", e);
     }
+  }
 
-    function fillSelect(id, values) {
-      const select = document.getElementById(id);
-      values.filter(v => v).forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        select.appendChild(opt);
-      });
-      select.addEventListener("change", renderList);
-    }
+  if (count === 0) {
+    alert("Не удалось скачать файлы");
+    return;
+  }
 
-    function renderList() {
-      const cat = document.getElementById("categoryFilter").value;
-      const sub = document.getElementById("subcategoryFilter").value;
-      const brand = document.getElementById("brandFilter").value;
-
-      const filtered = data.filter(d =>
-        (!cat || d.Category === cat) &&
-        (!sub || d.Subcategory === sub) &&
-        (!brand || d.Brand === brand)
-      );
-
-      const list = document.getElementById("fileList");
-      list.innerHTML = "";
-      filtered.forEach(d => {
-        const li = document.createElement("li");
-        const fileId = extractFileId(d.File);
-        const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        li.innerHTML = `<a href="${url}" target="_blank">${d.Brand} — ${d.Category} (${d.Subcategory})</a>`;
-        list.appendChild(li);
-      });
-    }
-
-    function extractFileId(url) {
-      const match = url.match(/[-\w]{25,}/);
-      return match ? match[0] : null;
-    }
-
-    async function downloadZip() {
-      const cat = document.getElementById("categoryFilter").value;
-      const sub = document.getElementById("subcategoryFilter").value;
-      const brand = document.getElementById("brandFilter").value;
-
-      const filtered = data.filter(d =>
-        (!cat || d.Category === cat) &&
-        (!sub || d.Subcategory === sub) &&
-        (!brand || d.Brand === brand)
-      );
-
-      if (filtered.length === 0) {
-        alert("Нет файлов для скачивания!");
-        return;
-      }
-
-      const zip = new JSZip();
-
-      for (const d of filtered) {
-        const fileId = extractFileId(d.File);
-        if (!fileId) continue;
-        const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-        try {
-          const response = await fetch(url);
-          const blob = await response.blob();
-          const ext = blob.type.split("/")[1] || "jpg";
-          zip.file(`${d.Brand}_${fileId}.${ext}`, blob);
-        } catch (e) {
-          console.error("Ошибка загрузки", url, e);
-        }
-      }
-
-      const content = await zip.generateAsync({type:"blob"});
-      saveAs(content, "archive.zip");
-    }
-  </script>
+  const content = await zip.generateAsync({type:"blob"});
+  saveAs(content, "photos.zip");
+}
+</script>
 </body>
 </html>
