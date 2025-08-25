@@ -2,69 +2,132 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Скачивание фотоархива</title>
+  <title>Фильтр и архив фото</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-  <h2>Скачивание фотоархива</h2>
-  <button onclick="downloadArchive()">Скачать архив</button>
-  <p id="status"></p>
+  <h2>Фильтрация фото</h2>
 
-<script>
-const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
+  <label>Категория:
+    <select id="categoryFilter">
+      <option value="">Все</option>
+    </select>
+  </label>
 
-async function downloadArchive() {
-  document.getElementById("status").innerText = "Загружаем список файлов...";
+  <label>Субкатегория:
+    <select id="subcategoryFilter">
+      <option value="">Все</option>
+    </select>
+  </label>
 
-  // 1. Загружаем CSV
-  let res = await fetch(csvUrl);
-  let text = await res.text();
+  <label>Бренд:
+    <select id="brandFilter">
+      <option value="">Все</option>
+    </select>
+  </label>
 
-  // 2. Парсим CSV (берём только колонку File или ссылку)
-  let rows = text.split("\n").map(r => r.split(","));
-  let header = rows[0];
-  let fileColIndex = header.findIndex(h => h.toLowerCase().includes("file"));
+  <button onclick="downloadZip()">Скачать архив</button>
 
-  let links = rows.slice(1).map(r => r[fileColIndex]).filter(Boolean);
+  <h3>Найденные файлы:</h3>
+  <ul id="fileList"></ul>
 
-  // 3. Преобразуем ссылки в прямые download-ссылки
-  let ids = links.map(link => {
-    let match = link.match(/[-\w]{25,}/);
-    return match ? match[0] : null;
-  }).filter(Boolean);
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
+    let data = [];
 
-  let downloadLinks = ids.map(id => `https://drive.google.com/uc?export=download&id=${id}`);
+    // Загружаем CSV
+    Papa.parse(csvUrl, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        data = results.data;
+        populateFilters();
+        renderList();
+      }
+    });
 
-  if (downloadLinks.length === 0) {
-    document.getElementById("status").innerText = "Не найдено ни одного файла.";
-    return;
-  }
-
-  document.getElementById("status").innerText = `Найдено файлов: ${downloadLinks.length}. Скачиваем...`;
-
-  // 4. Скачиваем и кладём в ZIP
-  let zip = new JSZip();
-  let count = 0;
-
-  for (let i = 0; i < downloadLinks.length; i++) {
-    try {
-      let resp = await fetch(downloadLinks[i]);
-      let blob = await resp.blob();
-      zip.file(`file_${i+1}.jpg`, blob); // все как .jpg (или можно определять mime)
-      count++;
-      document.getElementById("status").innerText = `Загружено: ${count}/${downloadLinks.length}`;
-    } catch (e) {
-      console.error("Ошибка загрузки", downloadLinks[i], e);
+    function populateFilters() {
+      fillSelect("categoryFilter", [...new Set(data.map(d => d.Category))]);
+      fillSelect("subcategoryFilter", [...new Set(data.map(d => d.Subcategory))]);
+      fillSelect("brandFilter", [...new Set(data.map(d => d.Brand))]);
     }
-  }
 
-  // 5. Сохраняем ZIP
-  let content = await zip.generateAsync({ type: "blob" });
-  saveAs(content, "archive.zip");
+    function fillSelect(id, values) {
+      const select = document.getElementById(id);
+      values.filter(v => v).forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      });
+      select.addEventListener("change", renderList);
+    }
 
-  document.getElementById("status").innerText = "Готово! Архив скачан.";
-}
-</script>
+    function renderList() {
+      const cat = document.getElementById("categoryFilter").value;
+      const sub = document.getElementById("subcategoryFilter").value;
+      const brand = document.getElementById("brandFilter").value;
+
+      const filtered = data.filter(d =>
+        (!cat || d.Category === cat) &&
+        (!sub || d.Subcategory === sub) &&
+        (!brand || d.Brand === brand)
+      );
+
+      const list = document.getElementById("fileList");
+      list.innerHTML = "";
+      filtered.forEach(d => {
+        const li = document.createElement("li");
+        const fileId = extractFileId(d.File);
+        const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        li.innerHTML = `<a href="${url}" target="_blank">${d.Brand} — ${d.Category} (${d.Subcategory})</a>`;
+        list.appendChild(li);
+      });
+    }
+
+    function extractFileId(url) {
+      const match = url.match(/[-\w]{25,}/);
+      return match ? match[0] : null;
+    }
+
+    async function downloadZip() {
+      const cat = document.getElementById("categoryFilter").value;
+      const sub = document.getElementById("subcategoryFilter").value;
+      const brand = document.getElementById("brandFilter").value;
+
+      const filtered = data.filter(d =>
+        (!cat || d.Category === cat) &&
+        (!sub || d.Subcategory === sub) &&
+        (!brand || d.Brand === brand)
+      );
+
+      if (filtered.length === 0) {
+        alert("Нет файлов для скачивания!");
+        return;
+      }
+
+      const zip = new JSZip();
+
+      for (const d of filtered) {
+        const fileId = extractFileId(d.File);
+        if (!fileId) continue;
+        const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+        try {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          const ext = blob.type.split("/")[1] || "jpg";
+          zip.file(`${d.Brand}_${fileId}.${ext}`, blob);
+        } catch (e) {
+          console.error("Ошибка загрузки", url, e);
+        }
+      }
+
+      const content = await zip.generateAsync({type:"blob"});
+      saveAs(content, "archive.zip");
+    }
+  </script>
 </body>
 </html>
