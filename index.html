@@ -2,137 +2,51 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Фильтр и скачивание файлов</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .filters { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
-    select { padding: 5px; }
-    button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-  </style>
+  <title>Скачать фото из таблицы</title>
 </head>
 <body>
-  <h2>Фильтр и скачивание файлов</h2>
+  <h2>Скачать фото из таблицы</h2>
+  <button id="download">Скачать архив</button>
 
-  <div class="filters">
-    <div>
-      <label>Бренд:</label>
-      <select id="brandFilter"><option value="">Все</option></select>
-    </div>
-    <div>
-      <label>Категория:</label>
-      <select id="categoryFilter"><option value="">Все</option></select>
-    </div>
-    <div>
-      <label>Месяц:</label>
-      <select id="monthFilter"><option value="">Все</option></select>
-    </div>
-  </div>
-
-  <button onclick="downloadFiltered()">Скачать архив</button>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script>
-    // ⚠️ Укажи сюда ссылку на CSV/TSV из Google Sheets
-    const dataUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0"; 
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
 
-    let tableData = [];
-
-    // --- Функция для исправления ссылок ---
-    function toDownloadUrl(link) {
-      // Пробуем достать ID из ссылки формата .../d/FILE_ID/
-      const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
-      }
-      
-      // Если уже правильный формат
-      if (link.includes("uc?export=download")) {
-        return link;
-      }
-
-      // fallback
-      return link;
+    // функция вытаскивания ID файла из ссылки
+    function extractFileId(url) {
+      const match = url.match(/[-\w]{25,}/);
+      return match ? match[0] : null;
     }
 
-    // Загружаем и парсим CSV
-    Papa.parse(dataUrl, {
-      download: true,
-      header: true,
-      delimiter: ",", // если TSV, замени на "\t"
-      complete: function(results) {
-        tableData = results.data;
-        fillFilters();
-      }
-    });
+    document.getElementById("download").addEventListener("click", async () => {
+      const response = await fetch(sheetUrl);
+      const csv = await response.text();
 
-    // Заполняем фильтры
-    function fillFilters() {
-      const brandSet = new Set();
-      const categorySet = new Set();
-      const monthSet = new Set();
-
-      tableData.forEach(row => {
-        if (row.Brand) brandSet.add(row.Brand);
-        if (row.Category) categorySet.add(row.Category);
-        if (row.Month) monthSet.add(row.Month);
-      });
-
-      fillSelect("brandFilter", brandSet);
-      fillSelect("categoryFilter", categorySet);
-      fillSelect("monthFilter", monthSet);
-    }
-
-    function fillSelect(id, values) {
-      const select = document.getElementById(id);
-      [...values].sort().forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        select.appendChild(opt);
-      });
-    }
-
-    // Фильтрация и скачивание
-    async function downloadFiltered() {
-      const brand = document.getElementById("brandFilter").value;
-      const category = document.getElementById("categoryFilter").value;
-      const month = document.getElementById("monthFilter").value;
-
-      const filtered = tableData.filter(row =>
-        (!brand || row.Brand === brand) &&
-        (!category || row.Category === category) &&
-        (!month || row.Month === month)
-      );
-
-      if (filtered.length === 0) {
-        alert("Нет данных для выбранных фильтров!");
-        return;
-      }
-
+      const rows = csv.split("\n").map(r => r.split(","));
       const zip = new JSZip();
-      let count = 0;
 
-      for (const row of filtered) {
-        const url = row.File;
-        if (!url) continue;
+      // идём по строкам, берём 8-ю колонку (H)
+      for (let i = 1; i < rows.length; i++) { // i=1 чтобы пропустить заголовок
+        const link = rows[i][7]; // H = 8-я колонка (индекс 7)
+        if (!link) continue;
 
+        const fileId = extractFileId(link);
+        if (!fileId) continue;
+
+        const fileUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
         try {
-          const fixedUrl = toDownloadUrl(url);
-          const response = await fetch(fixedUrl);
-          const blob = await response.blob();
-          const filename = (row.Brand || "file") + "_" + (++count) + ".jpg";
-          zip.file(filename, blob);
+          const imgResp = await fetch(fileUrl);
+          const blob = await imgResp.blob();
+          zip.file(`${i}.jpg`, blob); // имя файла = номер строки
         } catch (e) {
-          console.error("Ошибка скачивания", url, e);
+          console.error("Ошибка загрузки", link, e);
         }
       }
 
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "files.zip");
-    }
+      saveAs(content, "photos.zip");
+    });
   </script>
 </body>
 </html>
