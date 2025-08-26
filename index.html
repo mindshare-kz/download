@@ -2,89 +2,94 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Скачать фото из таблицы</title>
+  <title>Скачивание фото</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-  <h2>Скачивание файлов из Google Таблицы</h2>
+  <h3>Скачивание фото из Google Таблицы</h3>
 
-  <label>Фильтр по бренду:</label>
-  <select id="brandFilter">
+  <label for="filter">Фильтр по бренду:</label>
+  <select id="filter">
     <option value="">Все</option>
   </select>
 
-  <button id="downloadBtn">Скачать ZIP</button>
+  <button id="download">Скачать архив</button>
 
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0";
-
     let allRows = [];
 
+    // Загружаем CSV
     async function loadCSV() {
-      const resp = await fetch(sheetUrl);
-      const text = await resp.text();
-      const rows = text.split("\n").map(r => r.split(","));
-      allRows = rows;
+      const response = await fetch(sheetUrl);
+      const csvText = await response.text();
 
-      // Предположим, что бренд в колонке A (индекс 0)
-      const brands = [...new Set(rows.slice(1).map(r => r[0].trim()).filter(Boolean))];
-      const filter = document.getElementById("brandFilter");
-      brands.forEach(b => {
-        const opt = document.createElement("option");
-        opt.value = b;
-        opt.textContent = b;
-        filter.appendChild(opt);
+      Papa.parse(csvText, {
+        header: true,
+        complete: function(results) {
+          allRows = results.data.filter(row => row && Object.values(row).some(v => v)); 
+          fillFilterOptions();
+        }
       });
     }
 
+    // Заполняем выпадающий список уникальными брендами (например, колонка "Brand")
+    function fillFilterOptions() {
+      const filter = document.getElementById("filter");
+      const brands = [...new Set(allRows.map(row => row.Brand).filter(v => v))];
+      brands.forEach(brand => {
+        const option = document.createElement("option");
+        option.value = brand;
+        option.textContent = brand;
+        filter.appendChild(option);
+      });
+    }
+
+    // Извлекаем fileId из ссылки Google Drive
     function extractFileId(url) {
-      const match = url.match(/[-\w]{25,}/);
-      return match ? match[0] : null;
+      const match = url.match(/\/d\/([^/]+)\//);
+      return match ? match[1] : null;
     }
 
-    async function downloadZIP() {
-      const filterValue = document.getElementById("brandFilter").value;
+    // Скачиваем и собираем архив
+    document.getElementById("download").addEventListener("click", async () => {
+      const filterValue = document.getElementById("filter").value;
       const zip = new JSZip();
-
-      // Берём с 1-й строки (0 — заголовки)
-      const filteredRows = allRows.slice(1).filter(r => {
-        if (!r[7]) return false; // нет ссылки
-        if (filterValue && r[0].trim() !== filterValue) return false;
-        return true;
-      });
-
       let count = 0;
-      for (const row of filteredRows) {
-        const url = row[7].trim(); // колонка H
-        const fileId = extractFileId(url);
+
+      for (const row of allRows) {
+        if (filterValue && row.Brand !== filterValue) continue;
+
+        const driveUrl = row["H"] || row[Object.keys(row)[7]]; // 8-й столбец
+        if (!driveUrl) continue;
+
+        const fileId = extractFileId(driveUrl);
         if (!fileId) continue;
 
-        const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
         try {
-          const resp = await fetch(directUrl);
-          if (!resp.ok) continue;
-          const blob = await resp.blob();
+          const response = await fetch(downloadUrl);
+          if (!response.ok) continue;
+          const blob = await response.blob();
+          const filename = `${row.Brand || "file"}_${count}.jpg`;
 
-          const fileName = (row[0] || "file") + "_" + count + ".jpg";
-          zip.file(fileName, blob);
+          zip.file(filename, blob);
           count++;
         } catch (e) {
-          console.error("Ошибка загрузки", e);
+          console.error("Ошибка загрузки:", e);
         }
       }
 
       if (count === 0) {
-        alert("Не удалось скачать ни одного файла");
+        alert("Не удалось скачать ни одного файла. Проверьте ссылки в столбце H.");
         return;
       }
 
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "files.zip");
-    }
-
-    document.getElementById("downloadBtn").addEventListener("click", downloadZIP);
+      saveAs(content, "photos.zip");
+    });
 
     loadCSV();
   </script>
