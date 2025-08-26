@@ -2,101 +2,118 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Архив файлов рекламы</title>
+  <title>Фильтр и скачивание файлов</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2em auto; }
-    select, button { margin: 0.5em 0; padding: 0.5em; font-size: 1em; }
-    ul { list-style-type: none; padding: 0; }
-    li { margin: 0.3em 0; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .filters { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+    select { padding: 5px; }
+    button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
   </style>
 </head>
 <body>
-  <h1>Скачать ZIP по фильтрам</h1>
+  <h2>Фильтр и скачивание файлов</h2>
 
-  <label>Бренд:
-    <select id="brand">
-      <option value="">— все —</option>
-    </select>
-  </label><br>
+  <div class="filters">
+    <div>
+      <label>Бренд:</label>
+      <select id="brandFilter"><option value="">Все</option></select>
+    </div>
+    <div>
+      <label>Категория:</label>
+      <select id="categoryFilter"><option value="">Все</option></select>
+    </div>
+    <div>
+      <label>Месяц:</label>
+      <select id="monthFilter"><option value="">Все</option></select>
+    </div>
+  </div>
 
-  <label>Категория:
-    <select id="category">
-      <option value="">— все —</option>
-    </select>
-  </label><br>
-
-  <button id="download">Скачать ZIP</button>
-
-  <h2>Найденные файлы:</h2>
-  <ul id="file-list"></ul>
+  <button onclick="downloadFiltered()">Скачать архив</button>
 
   <script>
-    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrzL02mMo7YCISUJOwNTKRIFjCACgeFN7kb_nALugmAcTRTc0_WHEeZ2ngQTSYsvsKdKdyWHlaCdzZ/pub?gid=0&single=true&output=csv";
-    let allData = [];
+    // ⚠️ Укажи сюда ссылку на CSV/TSV из Google Sheets
+    const dataUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv"; 
 
-    Papa.parse(csvUrl, {
+    let tableData = [];
+
+    // Загружаем и парсим CSV
+    Papa.parse(dataUrl, {
       download: true,
       header: true,
-      complete: results => {
-        allData = results.data.filter(r => r.File && r.File.trim() !== "");
-        const brands = [...new Set(allData.map(r => r.Brand))].sort();
-        const categories = [...new Set(allData.map(r => r.Category))].sort();
-
-        const brandSelect = document.getElementById("brand");
-        brands.forEach(b => brandSelect.add(new Option(b, b)));
-
-        const categorySelect = document.getElementById("category");
-        categories.forEach(c => categorySelect.add(new Option(c, c)));
-
-        document.getElementById("brand").addEventListener("change", updateList);
-        document.getElementById("category").addEventListener("change", updateList);
+      delimiter: ",", // если TSV, замени на "," если CSV
+      complete: function(results) {
+        tableData = results.data;
+        fillFilters();
       }
     });
 
-    function updateList() {
-      const brand = document.getElementById("brand").value;
-      const category = document.getElementById("category").value;
-      const list = document.getElementById("file-list");
-      list.innerHTML = "";
+    // Заполняем фильтры
+    function fillFilters() {
+      const brandSet = new Set();
+      const categorySet = new Set();
+      const monthSet = new Set();
 
-      const filtered = allData.filter(r =>
-        (brand === "" || r.Brand === brand) &&
-        (category === "" || r.Category === category)
-      );
-
-      filtered.forEach((r, idx) => {
-        const li = document.createElement("li");
-        const url = r.File.replace("/view", "/uc?export=download");
-        li.innerHTML = `<a href="${url}" target="_blank">${r.Brand} — ${r.Subcategory} — ${r.Date}</a>`;
-        list.appendChild(li);
+      tableData.forEach(row => {
+        if (row.Brand) brandSet.add(row.Brand);
+        if (row.Category) categorySet.add(row.Category);
+        if (row.Month) monthSet.add(row.Month);
       });
 
-      document.getElementById("download").onclick = () => downloadZip(filtered);
+      fillSelect("brandFilter", brandSet);
+      fillSelect("categoryFilter", categorySet);
+      fillSelect("monthFilter", monthSet);
     }
 
-    async function downloadZip(rows) {
-      const zip = new JSZip();
-      let count = 1;
+    function fillSelect(id, values) {
+      const select = document.getElementById(id);
+      [...values].sort().forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      });
+    }
 
-      for (const r of rows) {
+    // Фильтрация и скачивание
+    async function downloadFiltered() {
+      const brand = document.getElementById("brandFilter").value;
+      const category = document.getElementById("categoryFilter").value;
+      const month = document.getElementById("monthFilter").value;
+
+      const filtered = tableData.filter(row =>
+        (!brand || row.Brand === brand) &&
+        (!category || row.Category === category) &&
+        (!month || row.Month === month)
+      );
+
+      if (filtered.length === 0) {
+        alert("Нет данных для выбранных фильтров!");
+        return;
+      }
+
+      const zip = new JSZip();
+      let count = 0;
+
+      for (const row of filtered) {
+        const url = row.File;
+        if (!url) continue;
+
         try {
-          const url = r.File.replace("/view", "/uc?export=download");
-          const resp = await fetch(url);
-          const blob = await resp.blob();
-          const ext = blob.type.includes("png") ? ".png" : ".jpg";
-          const filename = `${r.Brand}_${r.Category}_${count}${ext}`;
+          const response = await fetch(url);
+          const blob = await response.blob();
+          const filename = (row.Brand || "file") + "_" + (++count) + ".jpg";
           zip.file(filename, blob);
-          count++;
-        } catch (err) {
-          console.error("Ошибка загрузки:", r.File, err);
+        } catch (e) {
+          console.error("Ошибка скачивания", url, e);
         }
       }
 
-      zip.generateAsync({ type: "blob" })
-         .then(content => saveAs(content, "archive.zip"));
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "files.zip");
     }
   </script>
 </body>
