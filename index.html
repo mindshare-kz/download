@@ -1,189 +1,103 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Архив фото (фильтры)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Архив файлов рекламы</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
-    select, button { padding: 8px 12px; font-size: 14px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
-    .muted { color: #666; font-size: 13px; }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2em auto; }
+    select, button { margin: 0.5em 0; padding: 0.5em; font-size: 1em; }
+    ul { list-style-type: none; padding: 0; }
+    li { margin: 0.3em 0; }
   </style>
 </head>
 <body>
-  <h1>Скачать архив по фильтрам</h1>
+  <h1>Скачать ZIP по фильтрам</h1>
 
-  <div class="row">
-    <label>Brand:
-      <select id="brand"><option value="">— все —</option></select>
-    </label>
-    <label>Month:
-      <select id="month"><option value="">— все —</option></select>
-    </label>
-    <label>Carrier type:
-      <select id="carrier"><option value="">— все —</option></select>
-    </label>
-    <label>Category:
-      <select id="category"><option value="">— все —</option></select>
-    </label>
-    <label>Subcategory:
-      <select id="subcategory"><option value="">— все —</option></select>
-    </label>
-    <button id="btn-zip">Скачать ZIP</button>
-  </div>
+  <label>Бренд:
+    <select id="brand">
+      <option value="">— все —</option>
+    </select>
+  </label><br>
 
-  <div id="status" class="muted">Загружаю данные…</div>
+  <label>Категория:
+    <select id="category">
+      <option value="">— все —</option>
+    </select>
+  </label><br>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Brand</th>
-        <th>Month</th>
-        <th>Carrier type</th>
-        <th>Address</th>
-        <th>File ID</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
+  <button id="download">Скачать ZIP</button>
 
-<script>
-  // ==== НАСТРОЙКИ ====
-  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
-  // пример: const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv";
+  <h2>Найденные файлы:</h2>
+  <ul id="file-list"></ul>
 
-  const GAS_ZIPPER_URL = "https://script.google.com/macros/s/AKfycbzX_hG7vy8TTzKLXwBD-H4sbfuwpm8MmJyVDZnbPY3n8RpckZxKDSQ7aolEoBpMxzXt/exec";
-  // пример: const GAS_ZIPPER_URL = "https://script.google.com/macros/s/AKfycbzX_hG7vy8TTzKLXwBD-H4sbfuwpm8MmJyVDZnbPY3n8RpckZxKDSQ7aolEoBpMxzXt/exec";
+  <script>
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQGLXlcLn4jmhStOduOZeWL_ZnholxbZ-yDyBzJ8_U_vh789brxlEMg0Jcw4Unzhjr9Di3m8AUlWlO-/pub?gid=0&single=true&output=csv";
+    let allData = [];
 
-  const CHUNK_SIZE = 200;
+    Papa.parse(csvUrl, {
+      download: true,
+      header: true,
+      complete: results => {
+        allData = results.data.filter(r => r.File && r.File.trim() !== "");
+        const brands = [...new Set(allData.map(r => r.Brand))].sort();
+        const categories = [...new Set(allData.map(r => r.Category))].sort();
 
-  let rows = [];
+        const brandSelect = document.getElementById("brand");
+        brands.forEach(b => brandSelect.add(new Option(b, b)));
 
-  function normId(raw) {
-    if (!raw) return null;
-    let v = String(raw).trim();
-    v = v.replace(/^\//, ""); // обрежем ведущий слэш
-    // если вдруг пришла полная ссылка — вытащим ID
-    const m = v.match(/[-\w]{25,}/);
-    return m ? m[0] : null;
-  }
+        const categorySelect = document.getElementById("category");
+        categories.forEach(c => categorySelect.add(new Option(c, c)));
 
-  function uniqueSorted(arr) {
-    return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
-  }
-
-  function fillSelect(el, values) {
-    uniqueSorted(values).forEach(v => el.add(new Option(v, v)));
-  }
-
-  function applyFilters() {
-    const b = document.getElementById('brand').value;
-    const m = document.getElementById('month').value;
-    const c = document.getElementById('carrier').value;
-    const cat = document.getElementById('category').value;
-    const sub = document.getElementById('subcategory').value;
-
-    return rows.filter(r =>
-      (!b || r.Brand === b) &&
-      (!m || r.Month === m) &&
-      (!c || r['Carrier type'] === c) &&
-      (!cat || r.Category === cat) &&
-      (!sub || r.Subcategory === sub)
-    );
-  }
-
-  function renderTable() {
-    const data = applyFilters();
-    const tb = document.getElementById('tbody');
-    tb.innerHTML = "";
-    data.forEach(r => {
-      const id = normId(r['File ID'] || r.File || r.file || "");
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${r.Brand || ""}</td>
-        <td>${r.Month || ""}</td>
-        <td>${r['Carrier type'] || ""}</td>
-        <td>${r.Address || ""}</td>
-        <td>${id || '<span class="muted">нет</span>'}</td>
-      `;
-      tb.appendChild(tr);
-    });
-    document.getElementById('status').textContent = `Найдено строк: ${data.length}`;
-  }
-
-  function postZip(ids, name) {
-    // отправляем POST через скрытую форму (чтобы обойти CORS и сразу открыть скачивание)
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GAS_ZIPPER_URL;
-    form.target = '_blank';
-
-    const inputIds = document.createElement('input');
-    inputIds.type = 'hidden';
-    inputIds.name = 'ids';
-    inputIds.value = JSON.stringify(ids);
-
-    const inputName = document.createElement('input');
-    inputName.type = 'hidden';
-    inputName.name = 'name';
-    inputName.value = name;
-
-    form.appendChild(inputIds);
-    form.appendChild(inputName);
-    document.body.appendChild(form);
-    form.submit();
-    form.remove();
-  }
-
-  document.getElementById('btn-zip').addEventListener('click', () => {
-    const data = applyFilters();
-    const ids = data.map(r => normId(r['File ID'] || r.File || r.file)).filter(Boolean);
-    if (!ids.length) { alert('Нет файлов для архива.'); return; }
-
-    const nameBase = [
-      document.getElementById('brand').value || 'AllBrands',
-      document.getElementById('category').value || 'AllCategories',
-      document.getElementById('subcategory').value || 'AllSubcats',
-      document.getElementById('month').value || 'AllMonths'
-    ].join('_');
-
-    if (ids.length <= CHUNK_SIZE) {
-      postZip(ids, nameBase);
-    } else {
-      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-        postZip(ids.slice(i, i+CHUNK_SIZE), `${nameBase}_part${(i/CHUNK_SIZE)+1}`);
+        document.getElementById("brand").addEventListener("change", updateList);
+        document.getElementById("category").addEventListener("change", updateList);
       }
-      alert('Мы открыли несколько вкладок — разрешите всплывающие окна для этого сайта, чтобы все ZIP начали скачиваться.');
-    }
-  });
+    });
 
-  // Загрузка CSV
-  Papa.parse(CSV_URL, {
-    download: true,
-    header: true,
-    complete: (res) => {
-      rows = res.data.filter(r => r && (r['File ID'] || r.File));
-      // Заполняем фильтры
-      fillSelect(document.getElementById('brand'), rows.map(r => r.Brand));
-      fillSelect(document.getElementById('month'), rows.map(r => r.Month));
-      fillSelect(document.getElementById('carrier'), rows.map(r => r['Carrier type']));
-      fillSelect(document.getElementById('category'), rows.map(r => r.Category));
-      fillSelect(document.getElementById('subcategory'), rows.map(r => r.Subcategory));
-      // Слушатели изменений
-      ['brand','month','carrier','category','subcategory'].forEach(id => {
-        document.getElementById(id).addEventListener('change', renderTable);
+    function updateList() {
+      const brand = document.getElementById("brand").value;
+      const category = document.getElementById("category").value;
+      const list = document.getElementById("file-list");
+      list.innerHTML = "";
+
+      const filtered = allData.filter(r =>
+        (brand === "" || r.Brand === brand) &&
+        (category === "" || r.Category === category)
+      );
+
+      filtered.forEach((r, idx) => {
+        const li = document.createElement("li");
+        const url = r.File.replace("/view", "/uc?export=download");
+        li.innerHTML = `<a href="${url}" target="_blank">${r.Brand} — ${r.Subcategory} — ${r.Date}</a>`;
+        list.appendChild(li);
       });
-      renderTable();
-      document.getElementById('status').textContent = `Загружено строк: ${rows.length}`;
-    },
-    error: () => {
-      document.getElementById('status').textContent = 'Ошибка загрузки CSV.';
+
+      document.getElementById("download").onclick = () => downloadZip(filtered);
     }
-  });
-</script>
+
+    async function downloadZip(rows) {
+      const zip = new JSZip();
+      let count = 1;
+
+      for (const r of rows) {
+        try {
+          const url = r.File.replace("/view", "/uc?export=download");
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const ext = blob.type.includes("png") ? ".png" : ".jpg";
+          const filename = `${r.Brand}_${r.Category}_${count}${ext}`;
+          zip.file(filename, blob);
+          count++;
+        } catch (err) {
+          console.error("Ошибка загрузки:", r.File, err);
+        }
+      }
+
+      zip.generateAsync({ type: "blob" })
+         .then(content => saveAs(content, "archive.zip"));
+    }
+  </script>
 </body>
 </html>
