@@ -2,97 +2,53 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Скачивание файлов</title>
+  <title>Скачать все файлы</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
 </head>
 <body>
-  <h2>Скачивание файлов</h2>
-  <label>Выберите бренд:
-    <select id="brandFilter"></select>
-  </label>
-  <button id="downloadBtn">Скачать архив</button>
-
-  <ul id="fileList"></ul>
+  <h2>Скачать все файлы</h2>
+  <button onclick="downloadAll()">Скачать все</button>
 
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/13yMxhlyfV0aquQX9wDeqNii1FE-qLAz9lLbsQ_PDVDs/export?format=csv&gid=0";
+    const dataUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0"; 
+    let tableData = [];
 
-    let rows = [];
-    let filteredRows = [];
-
-    async function loadData() {
-      const response = await fetch(sheetUrl);
-      const csvText = await response.text();
-
-      rows = Papa.parse(csvText, {header: true}).data;
-      
-      // Заполняем фильтр уникальными брендами
-      const brands = [...new Set(rows.map(r => r.Brand).filter(b => b))];
-      const select = document.getElementById("brandFilter");
-      brands.forEach(b => {
-        const option = document.createElement("option");
-        option.value = b;
-        option.textContent = b;
-        select.appendChild(option);
-      });
-
-      select.addEventListener("change", updateList);
-      updateList();
-    }
-
-    function updateList() {
-      const brand = document.getElementById("brandFilter").value;
-      filteredRows = rows.filter(r => r.Brand === brand);
-
-      const list = document.getElementById("fileList");
-      list.innerHTML = "";
-
-      filteredRows.forEach(r => {
-        if (r.File) {
-          const li = document.createElement("li");
-          li.textContent = `${r.Brand} — ${r.Address}`;
-          list.appendChild(li);
-        }
-      });
-    }
-
-    document.getElementById("downloadBtn").addEventListener("click", async () => {
-      if (filteredRows.length === 0) {
-        alert("Нет файлов для скачивания");
-        return;
-      }
-
-      const zip = new JSZip();
-      let count = 0;
-
-      for (const row of filteredRows) {
-        if (!row.File) continue;
-
-        try {
-          const response = await fetch(row.File);
-          if (!response.ok) throw new Error("Ошибка скачивания");
-
-          const blob = await response.blob();
-          const filename = `${row.Brand}_${row.Address}.jpg`; // можно поправить расширение
-
-          zip.file(filename, blob);
-          count++;
-        } catch (e) {
-          console.error("Ошибка скачивания файла:", row.File, e);
-        }
-      }
-
-      if (count > 0) {
-        const zipBlob = await zip.generateAsync({type: "blob"});
-        saveAs(zipBlob, "files.zip");
-      } else {
-        alert("Не удалось скачать ни одного файла");
+    // Загружаем CSV
+    Papa.parse(dataUrl, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        tableData = results.data;
       }
     });
 
-    loadData();
+    function downloadAll() {
+      if (tableData.length === 0) {
+        alert("Данные ещё не загрузились!");
+        return;
+      }
+
+      const files = tableData.map(row => row.File).filter(Boolean);
+
+      if (files.length === 0) {
+        alert("Нет файлов для скачивания!");
+        return;
+      }
+
+      files.forEach((url, index) => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "file_" + (index + 1); // имя можно заменить на row.Brand и т.п.
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
   </script>
 </body>
 </html>
