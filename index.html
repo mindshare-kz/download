@@ -2,61 +2,81 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Скачать фото из Google Sheets</title>
+  <title>Скачивание фотоархива</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-  <h2>Фильтр и скачивание фото</h2>
-  <label>Фильтр по значению: <input type="text" id="filterInput"></label>
-  <button id="downloadBtn">Скачать архив</button>
+  <h2>Скачивание файлов из таблицы</h2>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <label for="filter">Выберите фильтр:</label>
+  <select id="filter">
+    <option value="all">Все</option>
+  </select>
+  <button id="download">Скачать архив</button>
+
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0";
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0";
+    let rows = [];
+    let headers = [];
 
-    async function fetchCSV() {
-      const res = await fetch(sheetUrl);
-      const text = await res.text();
-      return text.split("\n").map(row => row.split(","));
+    async function loadData() {
+      const response = await fetch(SHEET_URL);
+      const text = await response.text();
+
+      rows = text.split("\n").map(r => r.split(","));
+      headers = rows[0];
+      rows = rows.slice(1);
+
+      // например фильтруем по первому столбцу (можно поменять индекс)
+      const filterColIndex = 0;
+      const filterValues = [...new Set(rows.map(r => r[filterColIndex]))];
+
+      const select = document.getElementById("filter");
+      filterValues.forEach(v => {
+        if (v.trim() !== "") {
+          const opt = document.createElement("option");
+          opt.value = v;
+          opt.textContent = v;
+          select.appendChild(opt);
+        }
+      });
     }
 
-    async function downloadImages() {
-      const filterValue = document.getElementById("filterInput").value.trim().toLowerCase();
-      const rows = await fetchCSV();
+    async function downloadZip() {
+      const filter = document.getElementById("filter").value;
       const zip = new JSZip();
-      let count = 0;
 
-      for (let i = 1; i < rows.length; i++) { // пропускаем заголовок
-        const row = rows[i];
-        if (!row.length) continue;
+      // H-колонка (8-я, индекс 7)
+      const urlCol = 7;
 
-        const filterField = row[1]?.toLowerCase() || ""; // например фильтруем по 2 колонке
-        const url = row[7]?.trim(); // 8-я колонка (H)
+      // фильтрация строк
+      const filtered = rows.filter(r => filter === "all" || r[0] === filter);
 
-        if (url && (filterValue === "" || filterField.includes(filterValue))) {
-          try {
-            const response = await fetch(url);
-            if (!response.ok) continue;
-            const blob = await response.blob();
-            const ext = url.split('.').pop().split('?')[0];
-            zip.file(`file_${i}.${ext}`, blob);
-            count++;
-          } catch (e) {
-            console.error("Ошибка скачивания:", url, e);
-          }
-        }
-      }
-
-      if (count === 0) {
-        alert("Не найдено файлов для скачивания");
+      if (filtered.length === 0) {
+        alert("Нет файлов по выбранному фильтру");
         return;
       }
 
+      for (const row of filtered) {
+        const url = row[urlCol];
+        if (!url) continue;
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const name = url.split("/").pop().split("?")[0] || "file.jpg";
+          zip.file(name, blob);
+        } catch (e) {
+          console.error("Ошибка загрузки", url, e);
+        }
+      }
+
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "images.zip");
+      saveAs(content, "files.zip");
     }
 
-    document.getElementById("downloadBtn").addEventListener("click", downloadImages);
+    document.getElementById("download").addEventListener("click", downloadZip);
+    loadData();
   </script>
 </body>
 </html>
