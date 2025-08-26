@@ -40,11 +40,28 @@
 
     let tableData = [];
 
+    // --- Функция для исправления ссылок ---
+    function toDownloadUrl(link) {
+      // Пробуем достать ID из ссылки формата .../d/FILE_ID/
+      const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+      }
+      
+      // Если уже правильный формат
+      if (link.includes("uc?export=download")) {
+        return link;
+      }
+
+      // fallback
+      return link;
+    }
+
     // Загружаем и парсим CSV
     Papa.parse(dataUrl, {
       download: true,
       header: true,
-      delimiter: ",", // если TSV, замени на "," если CSV
+      delimiter: ",", // если TSV, замени на "\t"
       complete: function(results) {
         tableData = results.data;
         fillFilters();
@@ -103,7 +120,8 @@
         if (!url) continue;
 
         try {
-          const response = await fetch(url);
+          const fixedUrl = toDownloadUrl(url);
+          const response = await fetch(fixedUrl);
           const blob = await response.blob();
           const filename = (row.Brand || "file") + "_" + (++count) + ".jpg";
           zip.file(filename, blob);
