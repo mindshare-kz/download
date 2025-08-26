@@ -1,97 +1,140 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Скачивание фото</title>
+  <meta charset="UTF-8" />
+  <title>Фильтр и скачивание архива</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; padding: 16px; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    select,button { padding:8px 12px; }
+    small { color:#666 }
+  </style>
 </head>
 <body>
-  <h3>Скачивание фото из Google Таблицы</h3>
+  <h2>Скачать фото архивом</h2>
+  <div class="row">
+    <label>Бренд:
+      <select id="brand"><option value="">Все</option></select>
+    </label>
+    <button id="download">Скачать ZIP</button>
+  </div>
+  <div id="status"><small>Загрузка таблицы…</small></div>
 
-  <label for="filter">Фильтр по бренду:</label>
-  <select id="filter">
-    <option value="">Все</option>
-  </select>
+<script>
+const SHEET_URL   = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0";
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwtRzlyJh4h2h4iFfF9NVAN5pcEI711Ni0iEa2qwwYDfZQgocxD6O3_zw2yJlM2uRKc/exec";
+let rows = [];   // массив объектов-строк
+let headers = []; // названия колонок
 
-  <button id="download">Скачать архив</button>
+// Универсально вытаскиваем fileId из ячейки (URL или уже id)
+function extractFileId(cell) {
+  if (!cell) return null;
+  // если уже чистый id
+  if (/^[\w-]{25,}$/.test(cell.trim())) return cell.trim();
+  // из формата /file/d/<id>/
+  let m = cell.match(/\/d\/([^\/\?]+)/);
+  if (m) return m[1];
+  // из формата ?id=<id>
+  m = cell.match(/[?&]id=([\w-]{25,})/);
+  if (m) return m[1];
+  // как fallback — первая “длинная” последовательность
+  m = cell.match(/[\w-]{25,}/);
+  return m ? m[0] : null;
+}
 
-  <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0";
-    let allRows = [];
+function getColNameGuess(names) {
+  // Попробуем угадать имя колонки со ссылкой: FileID, File, H, Link, Ссылка
+  const candidates = ["FileID","File","H","Link","Ссылка"];
+  for (const c of candidates) if (names.includes(c)) return c;
+  // если нет — возьмём 8-й столбец (индекс 7)
+  return names[7];
+}
 
-    // Загружаем CSV
-    async function loadCSV() {
-      const response = await fetch(sheetUrl);
-      const csvText = await response.text();
+function unique(arr) { return [...new Set(arr.filter(Boolean))]; }
 
-      Papa.parse(csvText, {
-        header: true,
-        complete: function(results) {
-          allRows = results.data.filter(row => row && Object.values(row).some(v => v)); 
-          fillFilterOptions();
-        }
-      });
-    }
+function setStatus(msg) { document.getElementById('status').innerHTML = `<small>${msg}</small>`; }
 
-    // Заполняем выпадающий список уникальными брендами (например, колонка "Brand")
-    function fillFilterOptions() {
-      const filter = document.getElementById("filter");
-      const brands = [...new Set(allRows.map(row => row.Brand).filter(v => v))];
-      brands.forEach(brand => {
-        const option = document.createElement("option");
-        option.value = brand;
-        option.textContent = brand;
-        filter.appendChild(option);
-      });
-    }
+async function loadSheet() {
+  try {
+    const res = await fetch(SHEET_URL);
+    const csv = await res.text();
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    rows = parsed.data;
+    headers = parsed.meta.fields;
 
-    // Извлекаем fileId из ссылки Google Drive
-    function extractFileId(url) {
-      const match = url.match(/\/d\/([^/]+)\//);
-      return match ? match[1] : null;
-    }
-
-    // Скачиваем и собираем архив
-    document.getElementById("download").addEventListener("click", async () => {
-      const filterValue = document.getElementById("filter").value;
-      const zip = new JSZip();
-      let count = 0;
-
-      for (const row of allRows) {
-        if (filterValue && row.Brand !== filterValue) continue;
-
-        const driveUrl = row["H"] || row[Object.keys(row)[7]]; // 8-й столбец
-        if (!driveUrl) continue;
-
-        const fileId = extractFileId(driveUrl);
-        if (!fileId) continue;
-
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        try {
-          const response = await fetch(downloadUrl);
-          if (!response.ok) continue;
-          const blob = await response.blob();
-          const filename = `${row.Brand || "file"}_${count}.jpg`;
-
-          zip.file(filename, blob);
-          count++;
-        } catch (e) {
-          console.error("Ошибка загрузки:", e);
-        }
-      }
-
-      if (count === 0) {
-        alert("Не удалось скачать ни одного файла. Проверьте ссылки в столбце H.");
-        return;
-      }
-
-      const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "photos.zip");
+    // Заполняем фильтр брендов (колонка Brand)
+    const brandSet = unique(rows.map(r => r.Brand && r.Brand.trim()));
+    const sel = document.getElementById('brand');
+    brandSet.sort().forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      sel.appendChild(opt);
     });
 
-    loadCSV();
-  </script>
+    setStatus(`Загружено строк: ${rows.length}. Выберите фильтр и скачивайте.`);
+  } catch (e) {
+    setStatus('Ошибка загрузки CSV. Проверь ссылку публикации.');
+    console.error(e);
+  }
+}
+
+async function downloadZip() {
+  const brand = document.getElementById('brand').value;
+  const urlCol = getColNameGuess(headers);
+
+  const filtered = rows.filter(r => !brand || (r.Brand && r.Brand.trim() === brand));
+  if (filtered.length === 0) { alert('Нет строк по выбранному фильтру'); return; }
+
+  const zip = new JSZip();
+  let added = 0;
+
+  setStatus(`Нашли строк: ${filtered.length}. Скачиваем…`);
+
+  // последовательно, чтобы не душили квоты GAS
+  for (let i=0; i<filtered.length; i++) {
+    const row = filtered[i];
+    const cell = row[urlCol];
+    const id = extractFileId(cell);
+    if (!id) { console.warn('Нет id в строке', row); continue; }
+
+    const proxyUrl = `${GAS_ENDPOINT}?id=${encodeURIComponent(id)}`;
+
+    try {
+      const resp = await fetch(proxyUrl);
+      if (!resp.ok) { console.warn('HTTP', resp.status, id); continue; }
+
+      const ct = resp.headers.get('Content-Type') || '';
+      const ext = ct.split('/')[1]?.split(';')[0] || 'bin';
+      const brandSafe = (row.Brand || 'file').toString().replace(/[^\w\-]+/g,'_');
+      const dateSafe  = (row.Date  || '').toString().replace(/[^\d\w\-]+/g,'_');
+      const name = `${brandSafe}_${dateSafe || (i+1)}.${ext}`;
+
+      const blob = await resp.blob();
+      zip.file(name, blob);
+      added++;
+      if (added % 5 === 0) setStatus(`Скачано файлов: ${added}/${filtered.length}…`);
+    } catch (err) {
+      console.warn('Ошибка загрузки через GAS', id, err);
+    }
+  }
+
+  if (added === 0) {
+    setStatus('Не удалось скачать ни одного файла. Проверь доступы и корректность ссылок/ID.');
+    alert('Не скачалось ни одного файла.');
+    return;
+  }
+
+  setStatus(`Упаковка ${added} файлов в ZIP…`);
+  const blob = await zip.generateAsync({ type: 'blob' });
+  saveAs(blob, (brand || 'files') + '.zip');
+  setStatus(`Готово: ${added} файлов.`);
+}
+
+document.getElementById('download').addEventListener('click', downloadZip);
+loadSheet();
+</script>
 </body>
 </html>
