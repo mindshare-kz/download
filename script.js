@@ -4,12 +4,14 @@ let data = [];
 let filteredData = [];
 
 // Подгружаем JSON
-fetch('data/data.json')
+fetch(DATA_URL)
   .then(res => res.json())
-  .then(data => {
-    console.log(data); // теперь JSON точно подтянется
+  .then(jsonData => {
+    data = jsonData;
+    console.log("JSON загружен:", data);
+    populateFilters(); // Заполняем фильтры после загрузки данных
   })
-  .catch(err => console.error(err));
+  .catch(err => console.error("Ошибка при загрузке JSON:", err));
 
 // Заполняем фильтры
 function populateFilters() {
@@ -57,6 +59,7 @@ function showResults(list) {
         <input type="checkbox" data-id="${item.fileId}">
         ${item.Brand} | ${item.Month} | ${item['Carrier type']} | ${item.Advertiser}
       </label>
+      <br>
     `;
   });
 }
@@ -68,7 +71,7 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
 
   if(selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("http://195.49.212.211:5000/download", {
+  fetch("http://195.49.212.211:5000/download", {  // IP твоего Flask сервера
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
@@ -80,5 +83,7 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
     a.href = url;
     a.download = "archive.zip";
     a.click();
-  });
+    window.URL.revokeObjectURL(url);
+  })
+  .catch(err => console.error("Ошибка при скачивании архива:", err));
 });
