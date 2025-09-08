@@ -69,7 +69,7 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
 
   if(selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("http://<server_ip>:5000/download", {
+  fetch("http://195.49.212.211:5000/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
