@@ -1,4 +1,4 @@
-const DATA_URL = "https://mindshare-kz.github.io/download/data/data.json"; // ссылка на JSON на GitHub
+const DATA_URL = "https://mindshare-kz.github.io/download/data/data.json";
 
 let data = [];
 let filteredData = [];
@@ -9,7 +9,7 @@ fetch(DATA_URL)
   .then(jsonData => {
     data = jsonData;
     console.log("JSON загружен:", data);
-    populateFilters(); // Заполняем фильтры после загрузки данных
+    populateFilters();
   })
   .catch(err => console.error("Ошибка при загрузке JSON:", err));
 
@@ -29,7 +29,12 @@ function populateFilters() {
 function fillSelect(id, items) {
   const sel = document.getElementById(id);
   sel.innerHTML = '<option value="">All</option>';
-  items.forEach(i => sel.innerHTML += `<option value="${i}">${i}</option>`);
+  items.forEach(i => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = i;
+    sel.appendChild(opt);
+  });
 }
 
 // Фильтрация
@@ -54,13 +59,18 @@ function showResults(list) {
   const container = document.getElementById("results");
   container.innerHTML = "";
   list.forEach((item, idx) => {
-    container.innerHTML += `
-      <label>
-        <input type="checkbox" data-id="${item.fileId}">
-        ${item.Brand} | ${item.Month} | ${item['Carrier type']} | ${item.Advertiser}
-      </label>
-      <br>
-    `;
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.id = item.fileId;
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(
+      `${item.Brand} | ${item.Month} | ${item['Carrier type']} | ${item.Advertiser}`
+    ));
+
+    container.appendChild(label);
+    container.appendChild(document.createElement("br"));
   });
 }
 
@@ -71,18 +81,23 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
 
   if(selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("http://195.49.212.211:5000/download", {  // IP твоего Flask сервера
+  fetch("http://195.49.212.211:5000/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
   })
-  .then(res => res.blob())
+  .then(res => {
+    if(!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
+    return res.blob();
+  })
   .then(blob => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "archive.zip";
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     window.URL.revokeObjectURL(url);
   })
   .catch(err => console.error("Ошибка при скачивании архива:", err));
