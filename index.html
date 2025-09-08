@@ -1,54 +1,25 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Скачать все файлы</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Service</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h2>Скачать все файлы</h2>
-  <button onclick="downloadAll()">Скачать все</button>
+<h1>Download Service</h1>
 
-  <script>
-    const dataUrl = "https://docs.google.com/spreadsheets/d/1XK43QIyOiYnMwQZr9pn5VERiy87uBtRPORpwf7jAOw4/export?format=csv&gid=0"; 
-    let tableData = [];
+<div id="filters">
+  <select id="brandFilter"></select>
+  <select id="monthFilter"></select>
+  <select id="carrierFilter"></select>
+  <select id="advertiserFilter"></select>
+  <button id="applyFilters">Apply Filters</button>
+</div>
 
-    // Загружаем CSV
-    Papa.parse(dataUrl, {
-      download: true,
-      header: true,
-      complete: function(results) {
-        tableData = results.data;
-      }
-    });
+<div id="results"></div>
+<button id="downloadSelected">Download Selected</button>
 
-    function downloadAll() {
-      if (tableData.length === 0) {
-        alert("Данные ещё не загрузились!");
-        return;
-      }
-
-      const files = tableData.map(row => row.File).filter(Boolean);
-
-      if (files.length === 0) {
-        alert("Нет файлов для скачивания!");
-        return;
-      }
-
-      files.forEach((url, index) => {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "file_" + (index + 1); // имя можно заменить на row.Brand и т.п.
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      });
-    }
-  </script>
+<script src="script.js"></script>
 </body>
 </html>
