@@ -1,4 +1,4 @@
-const DATA_URL = "https://mindshare-kz.github.io/download/data.json""; // ссылка на JSON на GitHub
+const DATA_URL = "https://github.com/mindshare-kz/download/blob/main/data/data.json"; // ссылка на JSON на GitHub
 
 let data = [];
 let filteredData = [];
