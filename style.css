@@ -1,0 +1,4 @@
+body { font-family: Arial, sans-serif; padding: 20px; }
+#filters select { margin-right: 10px; }
+#results { margin-top: 20px; }
+#results label { display: block; margin: 5px 0; }
