@@ -1,16 +1,15 @@
-const DATA_URL = "https://github.com/mindshare-kz/download/data/data.json"; // ссылка на JSON на GitHub
+const DATA_URL = "https://mindshare-kz.github.io/download/data/data.json"; // ссылка на JSON на GitHub
 
 let data = [];
 let filteredData = [];
 
 // Подгружаем JSON
-fetch(DATA_URL)
+fetch('data/data.json')
   .then(res => res.json())
-  .then(json => {
-    data = json;
-    populateFilters();
-    showResults(data);
-  });
+  .then(data => {
+    console.log(data); // теперь JSON точно подтянется
+  })
+  .catch(err => console.error(err));
 
 // Заполняем фильтры
 function populateFilters() {
