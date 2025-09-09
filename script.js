@@ -81,7 +81,7 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
 
   if(selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("https://55f0099b96ac.ngrok-free.app/download", {
+  fetch("https://22be121eb41b.ngrok-free.app/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
@@ -102,3 +102,4 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
   })
   .catch(err => console.error("Ошибка при скачивании архива:", err));
 });
+
