@@ -79,15 +79,15 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
   const selectedIds = Array.from(document.querySelectorAll("#results input:checked"))
                            .map(el => el.dataset.id);
 
-  if(selectedIds.length === 0) return alert("Select at least one file");
+  if (selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("http://22be121eb41b.ngrok-free.app/download", {
+  fetch("https://22be121eb41b.ngrok-free.app/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
   })
   .then(res => {
-    if(!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
+    if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
     return res.blob();
   })
   .then(blob => {
@@ -102,4 +102,5 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
   })
   .catch(err => console.error("Ошибка при скачивании архива:", err));
 });
+
 
