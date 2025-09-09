@@ -81,7 +81,7 @@ document.getElementById("downloadSelected").addEventListener("click", () => {
 
   if(selectedIds.length === 0) return alert("Select at least one file");
 
-  fetch("https://22be121eb41b.ngrok-free.app/download", {
+  fetch("http://22be121eb41b.ngrok-free.app/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
