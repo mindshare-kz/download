@@ -7,33 +7,46 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-  <h1>Download Service</h1>
+  <header>
+    <h1>Download Service</h1>
+  </header>
 
-  <div id="filters" class="filters">
-    <!-- Фильтры будут карточками -->
-    <div class="filter-card">
-      <label>Бренд</label>
-      <select id="brandFilter"></select>
+  <section id="filters">
+    <h2>Filters</h2>
+    <div class="filter-group">
+      <label for="brandFilter">Brand:</label>
+      <select id="brandFilter">
+        <option value="all">All</option>
+      </select>
     </div>
-    <div class="filter-card">
-      <label>Месяц</label>
-      <select id="monthFilter"></select>
+    <div class="filter-group">
+      <label for="monthFilter">Month:</label>
+      <select id="monthFilter">
+        <option value="all">All</option>
+      </select>
     </div>
-    <div class="filter-card">
-      <label>Carrier</label>
-      <select id="carrierFilter"></select>
+    <div class="filter-group">
+      <label for="carrierFilter">Carrier:</label>
+      <select id="carrierFilter">
+        <option value="all">All</option>
+      </select>
     </div>
-    <div class="filter-card">
-      <label>Advertiser</label>
-      <select id="advertiserFilter"></select>
+    <div class="filter-group">
+      <label for="advertiserFilter">Advertiser:</label>
+      <select id="advertiserFilter">
+        <option value="all">All</option>
+      </select>
     </div>
-  </div>
+  </section>
 
-  <div id="fileCount">Найдено: 0 файлов</div>
-  <button id="downloadSelected">Скачать архив</button>
-</div>
+  <section id="archive-info">
+    <p>Files selected for archive: <span id="fileCount">0</span></p>
+  </section>
 
-<script src="script.js"></script>
+  <section id="actions">
+    <button id="downloadSelected">Download Archive</button>
+  </section>
+
+  <script src="script.js"></script>
 </body>
 </html>
