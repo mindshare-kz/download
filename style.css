@@ -1,4 +1,58 @@
-body { font-family: Arial, sans-serif; padding: 20px; }
-#filters select { margin-right: 10px; }
-#results { margin-top: 20px; }
-#results label { display: block; margin: 5px 0; }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  margin-top: 30px;
+  color: #333;
+}
+
+#filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+#filters select {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+
+#fileCount {
+  margin-bottom: 20px;
+  font-weight: bold;
+  color: #555;
+}
+
+#downloadSelected {
+  padding: 12px 30px;
+  font-size: 16px;
+  color: #fff;
+  background-color: #0078d7;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#downloadSelected:hover {
+  background-color: #005a9e;
+}
+
+@media (max-width: 600px) {
+  #filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
