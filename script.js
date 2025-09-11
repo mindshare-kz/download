@@ -1,106 +1,75 @@
-const DATA_URL = "https://mindshare-kz.github.io/download/data/data.json";
+let jsonData = [];
+const brandFilter = document.getElementById("brandFilter");
+const monthFilter = document.getElementById("monthFilter");
+const carrierFilter = document.getElementById("carrierFilter");
+const advertiserFilter = document.getElementById("advertiserFilter");
+const fileCountDiv = document.getElementById("fileCount");
 
-let data = [];
-let filteredData = [];
-
-// Подгружаем JSON
-fetch(DATA_URL)
+// --- Загрузка данных ---
+fetch("data/data.json")
   .then(res => res.json())
-  .then(jsonData => {
-    data = jsonData;
-    console.log("JSON загружен:", data);
+  .then(data => {
+    jsonData = data;
     populateFilters();
-  })
-  .catch(err => console.error("Ошибка при загрузке JSON:", err));
+    updateArchiveInfo();
+  });
 
-// Заполняем фильтры
+// --- Заполнение фильтров ---
 function populateFilters() {
-  const brands = [...new Set(data.map(d => d.Brand))];
-  const months = [...new Set(data.map(d => d.Month))];
-  const carriers = [...new Set(data.map(d => d['Carrier type']))];
-  const advertisers = [...new Set(data.map(d => d.Advertiser))];
-
-  fillSelect("brandFilter", brands);
-  fillSelect("monthFilter", months);
-  fillSelect("carrierFilter", carriers);
-  fillSelect("advertiserFilter", advertisers);
+  populateSelect(brandFilter, getUniqueValues(jsonData, "Brand"));
+  populateSelect(monthFilter, getUniqueValues(jsonData, "Month"));
+  populateSelect(carrierFilter, getUniqueValues(jsonData, "Carrier type"));
+  populateSelect(advertiserFilter, getUniqueValues(jsonData, "Advertiser"));
 }
 
-function fillSelect(id, items) {
-  const sel = document.getElementById(id);
-  sel.innerHTML = '<option value="">All</option>';
-  items.forEach(i => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = i;
-    sel.appendChild(opt);
+// --- Получение уникальных значений ---
+function getUniqueValues(data, key) {
+  return Array.from(new Set(data.map(d => d[key]).filter(Boolean))).sort();
+}
+
+// --- Заполнение select ---
+function populateSelect(select, values) {
+  const current = select.value;
+  select.innerHTML = `<option value="">Все</option>`;
+  values.forEach(v => {
+    const option = document.createElement("option");
+    option.value = v;
+    option.textContent = v;
+    select.appendChild(option);
   });
+  if (values.includes(current)) select.value = current;
 }
 
-// Фильтрация
-document.getElementById("applyFilters").addEventListener("click", () => {
-  const brand = document.getElementById("brandFilter").value;
-  const month = document.getElementById("monthFilter").value;
-  const carrier = document.getElementById("carrierFilter").value;
-  const advertiser = document.getElementById("advertiserFilter").value;
-
-  filteredData = data.filter(d =>
-    (!brand || d.Brand === brand) &&
-    (!month || d.Month === month) &&
-    (!carrier || d['Carrier type'] === carrier) &&
-    (!advertiser || d.Advertiser === advertiser)
+// --- Получение отфильтрованных данных ---
+function getFilteredData() {
+  return jsonData.filter(d =>
+    (brandFilter.value === "" || d.Brand === brandFilter.value) &&
+    (monthFilter.value === "" || d.Month === monthFilter.value) &&
+    (carrierFilter.value === "" || d["Carrier type"] === carrierFilter.value) &&
+    (advertiserFilter.value === "" || d.Advertiser === advertiserFilter.value)
   );
-
-  showResults(filteredData);
-});
-
-// Показываем результаты с чекбоксами
-function showResults(list) {
-  const container = document.getElementById("results");
-  container.innerHTML = "";
-  list.forEach((item, idx) => {
-    const label = document.createElement("label");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.dataset.id = item.fileId;
-
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(
-      `${item.Brand} | ${item.Month} | ${item['Carrier type']} | ${item.Advertiser}`
-    ));
-
-    container.appendChild(label);
-    container.appendChild(document.createElement("br"));
-  });
 }
 
-// Скачивание архива
-document.getElementById("downloadSelected").addEventListener("click", () => {
-  const selectedIds = Array.from(document.querySelectorAll("#results input:checked"))
-                           .map(el => el.dataset.id);
+// --- Обновление взаимной фильтрации ---
+function updateFilters() {
+  const filtered = getFilteredData();
 
-  if (selectedIds.length === 0) return alert("Select at least one file");
+  // Обновляем все фильтры, чтобы оставались только подходящие значения
+  populateSelect(brandFilter, getUniqueValues(filtered, "Brand"));
+  populateSelect(monthFilter, getUniqueValues(filtered, "Month"));
+  populateSelect(carrierFilter, getUniqueValues(filtered, "Carrier type"));
+  populateSelect(advertiserFilter, getUniqueValues(filtered, "Advertiser"));
 
-  fetch("https://22be121eb41b.ngrok-free.app/download", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids: selectedIds, zip_name: "archive.zip" })
-  })
-  .then(res => {
-    if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
-    return res.blob();
-  })
-  .then(blob => {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "archive.zip";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  })
-  .catch(err => console.error("Ошибка при скачивании архива:", err));
+  updateArchiveInfo();
+}
+
+// --- Обновление счётчика файлов ---
+function updateArchiveInfo() {
+  const filtered = getFilteredData();
+  fileCountDiv.textContent = `Найдено: ${filtered.length} файлов`;
+}
+
+// --- События изменения фильтров ---
+[brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(select => {
+  select.addEventListener("change", updateFilters);
 });
-
-
