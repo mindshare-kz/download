@@ -1,67 +1,111 @@
-let jsonData = []; 
-let filters = {
-    Brand: "Все",
-    Month: "Все",
-    "Carrier type": "Все",
-    Advertiser: "Все"
-};
+// --- Данные (пример, у тебя будет data.json) ---
+let data = []; // сюда будет загружаться JSON с сервера
 
+// --- Ссылки на селекты и счетчик ---
 const brandFilter = document.getElementById("brandFilter");
 const monthFilter = document.getElementById("monthFilter");
 const carrierFilter = document.getElementById("carrierFilter");
 const advertiserFilter = document.getElementById("advertiserFilter");
-const resultsCounter = document.getElementById("results");
+const downloadBtn = document.getElementById("downloadSelected");
+const resultsDiv = document.getElementById("results");
 
-fetch("/data/data.json")
-    .then(res => res.json())
-    .then(data => {
-        jsonData = data;
-        populateAllFilters();
-        updateResults();
-    });
+// --- Загружаем JSON ---
+fetch("data/data.json")
+  .then(res => res.json())
+  .then(json => {
+    data = json;
+    populateFilters();
+    updateResults();
+  });
 
-function populateAllFilters() {
-    populateSelect(brandFilter, Array.from(new Set(jsonData.map(d => d.Brand))));
-    populateSelect(monthFilter, Array.from(new Set(jsonData.map(d => d.Month))));
-    populateSelect(carrierFilter, Array.from(new Set(jsonData.map(d => d["Carrier type"]))));
-    populateSelect(advertiserFilter, Array.from(new Set(jsonData.map(d => d.Advertiser))));
+// --- Функции ---
+function getFilteredData() {
+  return data.filter(item => 
+    (brandFilter.value === "All" || item.Brand === brandFilter.value) &&
+    (monthFilter.value === "All" || item.Month === monthFilter.value) &&
+    (carrierFilter.value === "All" || item["Carrier type"] === carrierFilter.value) &&
+    (advertiserFilter.value === "All" || item.Advertiser === advertiserFilter.value)
+  );
+}
+
+function populateFilters() {
+  const brands = ["All", ...new Set(data.map(d => d.Brand))];
+  const months = ["All", ...new Set(data.map(d => d.Month))];
+  const carriers = ["All", ...new Set(data.map(d => d["Carrier type"]))];
+  const advertisers = ["All", ...new Set(data.map(d => d.Advertiser))];
+
+  populateSelect(brandFilter, brands);
+  populateSelect(monthFilter, months);
+  populateSelect(carrierFilter, carriers);
+  populateSelect(advertiserFilter, advertisers);
 }
 
 function populateSelect(select, options) {
-    select.innerHTML = "";
-    const allOption = document.createElement("option");
-    allOption.value = "Все";
-    allOption.text = "Все";
-    select.appendChild(allOption);
-    options.sort().forEach(opt => {
-        const option = document.createElement("option");
-        option.value = opt;
-        option.text = opt;
-        select.appendChild(option);
-    });
+  const prevValue = select.value || "All";
+  select.innerHTML = "";
+  options.forEach(opt => {
+    const el = document.createElement("option");
+    el.value = opt;
+    el.textContent = opt;
+    select.appendChild(el);
+  });
+  if ([...options].includes(prevValue)) select.value = prevValue;
 }
 
-[brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(sel => {
-    sel.addEventListener("change", () => {
-        // напрямую по ключу JSON
-        const keyMap = {
-            brandFilter: "Brand",
-            monthFilter: "Month",
-            carrierFilter: "Carrier type",
-            advertiserFilter: "Advertiser"
-        };
-        filters[keyMap[sel.id]] = sel.value;
-        updateResults();
-    });
-});
+function updateFiltersOptions() {
+  const filtered = data.filter(item => 
+    (brandFilter.value === "All" || item.Brand === brandFilter.value) &&
+    (monthFilter.value === "All" || item.Month === monthFilter.value) &&
+    (carrierFilter.value === "All" || item["Carrier type"] === carrierFilter.value) &&
+    (advertiserFilter.value === "All" || item.Advertiser === advertiserFilter.value)
+  );
+
+  const brandOptions = ["All", ...new Set(filtered.map(d => d.Brand))];
+  const monthOptions = ["All", ...new Set(filtered.map(d => d.Month))];
+  const carrierOptions = ["All", ...new Set(filtered.map(d => d["Carrier type"]))];
+  const advertiserOptions = ["All", ...new Set(filtered.map(d => d.Advertiser))];
+
+  populateSelect(brandFilter, brandOptions);
+  populateSelect(monthFilter, monthOptions);
+  populateSelect(carrierFilter, carrierOptions);
+  populateSelect(advertiserFilter, advertiserOptions);
+}
 
 function updateResults() {
-    const filtered = jsonData.filter(d =>
-        (filters.Brand === "Все" || d.Brand === filters.Brand) &&
-        (filters.Month === "Все" || d.Month === filters.Month) &&
-        (filters["Carrier type"] === "Все" || d["Carrier type"] === filters["Carrier type"]) &&
-        (filters.Advertiser === "Все" || d.Advertiser === filters.Advertiser)
-    );
-
-    resultsCounter.textContent = `Файлов в архиве: ${filtered.length}`;
+  const filtered = getFilteredData();
+  resultsDiv.textContent = `Файлов в архиве: ${filtered.length}`;
 }
+
+// --- Обработчики ---
+[brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(sel => {
+  sel.addEventListener("change", () => {
+    updateFiltersOptions();
+    updateResults();
+  });
+});
+
+downloadBtn.addEventListener("click", () => {
+  const filtered = getFilteredData();
+  const ids = filtered.map(f => f.fileId);
+  if (ids.length === 0) {
+    alert("Нет файлов для скачивания!");
+    return;
+  }
+  fetch("/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  })
+    .then(res => res.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "archive.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    })
+    .catch(err => alert("Ошибка при скачивании: " + err));
+});
