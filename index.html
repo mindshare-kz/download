@@ -1,52 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download Service</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header>
-    <h1>Download Service</h1>
-  </header>
-
-  <section id="filters">
-    <h2>Filters</h2>
-    <div class="filter-group">
-      <label for="brandFilter">Brand:</label>
-      <select id="brandFilter">
-        <option value="all">All</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label for="monthFilter">Month:</label>
-      <select id="monthFilter">
-        <option value="all">All</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label for="carrierFilter">Carrier:</label>
-      <select id="carrierFilter">
-        <option value="all">All</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label for="advertiserFilter">Advertiser:</label>
-      <select id="advertiserFilter">
-        <option value="all">All</option>
-      </select>
-    </div>
-  </section>
-
-  <section id="archive-info">
-    <p>Files selected for archive: <span id="fileCount">0</span></p>
-  </section>
-
-  <section id="actions">
-    <button id="downloadSelected">Download Archive</button>
-  </section>
-
-  <script src="script.js"></script>
-</body>
-</html>
+<section id="filters">
+  <h2>Filters</h2>
+  <div class="filter-group">
+    <label for="monthFilter">Month:</label>
+    <select id="monthFilter"><option value="all">All</option></select>
+  </div>
+  <div class="filter-group">
+    <label for="advertiserFilter">Advertiser:</label>
+    <select id="advertiserFilter"><option value="all">All</option></select>
+  </div>
+  <div class="filter-group">
+    <label for="brandFilter">Brand:</label>
+    <select id="brandFilter"><option value="all">All</option></select>
+  </div>
+  <div class="filter-group">
+    <label for="carrierFilter">Carrier Type:</label>
+    <select id="carrierFilter"><option value="all">All</option></select>
+  </div>
+</section>
