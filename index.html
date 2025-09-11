@@ -7,19 +7,33 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="container">
   <h1>Download Service</h1>
 
-  <div id="filters">
-    <select id="brandFilter"></select>
-    <select id="monthFilter"></select>
-    <select id="carrierFilter"></select>
-    <select id="advertiserFilter"></select>
+  <div id="filters" class="filters">
+    <!-- Фильтры будут карточками -->
+    <div class="filter-card">
+      <label>Бренд</label>
+      <select id="brandFilter"></select>
+    </div>
+    <div class="filter-card">
+      <label>Месяц</label>
+      <select id="monthFilter"></select>
+    </div>
+    <div class="filter-card">
+      <label>Carrier</label>
+      <select id="carrierFilter"></select>
+    </div>
+    <div class="filter-card">
+      <label>Advertiser</label>
+      <select id="advertiserFilter"></select>
+    </div>
   </div>
 
-<div id="fileCount">Найдено: 0 файлов</div>
-
+  <div id="fileCount">Найдено: 0 файлов</div>
   <button id="downloadSelected">Скачать архив</button>
+</div>
 
-  <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
