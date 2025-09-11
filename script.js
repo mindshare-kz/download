@@ -1,111 +1,75 @@
-// --- Данные (пример, у тебя будет data.json) ---
-let data = []; // сюда будет загружаться JSON с сервера
-
-// --- Ссылки на селекты и счетчик ---
+let jsonData = [];
 const brandFilter = document.getElementById("brandFilter");
 const monthFilter = document.getElementById("monthFilter");
 const carrierFilter = document.getElementById("carrierFilter");
 const advertiserFilter = document.getElementById("advertiserFilter");
-const downloadBtn = document.getElementById("downloadSelected");
-const resultsDiv = document.getElementById("results");
+const fileCountDiv = document.getElementById("fileCount");
 
-// --- Загружаем JSON ---
+// --- Загрузка данных ---
 fetch("data/data.json")
   .then(res => res.json())
-  .then(json => {
-    data = json;
+  .then(data => {
+    jsonData = data;
     populateFilters();
-    updateResults();
+    updateArchiveInfo();
   });
 
-// --- Функции ---
-function getFilteredData() {
-  return data.filter(item => 
-    (brandFilter.value === "All" || item.Brand === brandFilter.value) &&
-    (monthFilter.value === "All" || item.Month === monthFilter.value) &&
-    (carrierFilter.value === "All" || item["Carrier type"] === carrierFilter.value) &&
-    (advertiserFilter.value === "All" || item.Advertiser === advertiserFilter.value)
-  );
-}
-
+// --- Заполнение фильтров ---
 function populateFilters() {
-  const brands = ["All", ...new Set(data.map(d => d.Brand))];
-  const months = ["All", ...new Set(data.map(d => d.Month))];
-  const carriers = ["All", ...new Set(data.map(d => d["Carrier type"]))];
-  const advertisers = ["All", ...new Set(data.map(d => d.Advertiser))];
-
-  populateSelect(brandFilter, brands);
-  populateSelect(monthFilter, months);
-  populateSelect(carrierFilter, carriers);
-  populateSelect(advertiserFilter, advertisers);
+  populateSelect(brandFilter, getUniqueValues(jsonData, "Brand"));
+  populateSelect(monthFilter, getUniqueValues(jsonData, "Month"));
+  populateSelect(carrierFilter, getUniqueValues(jsonData, "Carrier type"));
+  populateSelect(advertiserFilter, getUniqueValues(jsonData, "Advertiser"));
 }
 
-function populateSelect(select, options) {
-  const prevValue = select.value || "All";
-  select.innerHTML = "";
-  options.forEach(opt => {
-    const el = document.createElement("option");
-    el.value = opt;
-    el.textContent = opt;
-    select.appendChild(el);
+// --- Получение уникальных значений ---
+function getUniqueValues(data, key) {
+  return Array.from(new Set(data.map(d => d[key]).filter(Boolean))).sort();
+}
+
+// --- Заполнение select ---
+function populateSelect(select, values) {
+  const current = select.value;
+  select.innerHTML = `<option value="">Все</option>`;
+  values.forEach(v => {
+    const option = document.createElement("option");
+    option.value = v;
+    option.textContent = v;
+    select.appendChild(option);
   });
-  if ([...options].includes(prevValue)) select.value = prevValue;
+  if (values.includes(current)) select.value = current;
 }
 
-function updateFiltersOptions() {
-  const filtered = data.filter(item => 
-    (brandFilter.value === "All" || item.Brand === brandFilter.value) &&
-    (monthFilter.value === "All" || item.Month === monthFilter.value) &&
-    (carrierFilter.value === "All" || item["Carrier type"] === carrierFilter.value) &&
-    (advertiserFilter.value === "All" || item.Advertiser === advertiserFilter.value)
+// --- Получение отфильтрованных данных ---
+function getFilteredData() {
+  return jsonData.filter(d =>
+    (brandFilter.value === "" || d.Brand === brandFilter.value) &&
+    (monthFilter.value === "" || d.Month === monthFilter.value) &&
+    (carrierFilter.value === "" || d["Carrier type"] === carrierFilter.value) &&
+    (advertiserFilter.value === "" || d.Advertiser === advertiserFilter.value)
   );
-
-  const brandOptions = ["All", ...new Set(filtered.map(d => d.Brand))];
-  const monthOptions = ["All", ...new Set(filtered.map(d => d.Month))];
-  const carrierOptions = ["All", ...new Set(filtered.map(d => d["Carrier type"]))];
-  const advertiserOptions = ["All", ...new Set(filtered.map(d => d.Advertiser))];
-
-  populateSelect(brandFilter, brandOptions);
-  populateSelect(monthFilter, monthOptions);
-  populateSelect(carrierFilter, carrierOptions);
-  populateSelect(advertiserFilter, advertiserOptions);
 }
 
-function updateResults() {
+// --- Обновление взаимной фильтрации ---
+function updateFilters() {
   const filtered = getFilteredData();
-  resultsDiv.textContent = `Файлов в архиве: ${filtered.length}`;
+
+  // Обновляем все фильтры, чтобы оставались только подходящие значения
+  populateSelect(brandFilter, getUniqueValues(filtered, "Brand"));
+  populateSelect(monthFilter, getUniqueValues(filtered, "Month"));
+  populateSelect(carrierFilter, getUniqueValues(filtered, "Carrier type"));
+  populateSelect(advertiserFilter, getUniqueValues(filtered, "Advertiser"));
+
+  updateArchiveInfo();
 }
 
-// --- Обработчики ---
-[brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(sel => {
-  sel.addEventListener("change", () => {
-    updateFiltersOptions();
-    updateResults();
-  });
-});
-
-downloadBtn.addEventListener("click", () => {
+// --- Обновление счётчика файлов ---
+function updateArchiveInfo() {
   const filtered = getFilteredData();
-  const ids = filtered.map(f => f.fileId);
-  if (ids.length === 0) {
-    alert("Нет файлов для скачивания!");
-    return;
-  }
-  fetch("/download", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids })
-  })
-    .then(res => res.blob())
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "archive.zip";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    })
-    .catch(err => alert("Ошибка при скачивании: " + err));
+  fileCountDiv.textContent = `Найдено: ${filtered.length} файлов`;
+}
+
+// --- События изменения фильтров ---
+[brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(select => {
+  select.addEventListener("change", updateFilters);
 });
