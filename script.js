@@ -1,4 +1,4 @@
-let jsonData = []; // сюда подгрузится data.json
+let jsonData = []; 
 let filters = {
     Brand: "Все",
     Month: "Все",
@@ -12,7 +12,6 @@ const carrierFilter = document.getElementById("carrierFilter");
 const advertiserFilter = document.getElementById("advertiserFilter");
 const resultsCounter = document.getElementById("results");
 
-// --- Инициализация ---
 fetch("/data/data.json")
     .then(res => res.json())
     .then(data => {
@@ -21,7 +20,6 @@ fetch("/data/data.json")
         updateResults();
     });
 
-// --- Заполняем фильтры всеми вариантами ---
 function populateAllFilters() {
     populateSelect(brandFilter, Array.from(new Set(jsonData.map(d => d.Brand))));
     populateSelect(monthFilter, Array.from(new Set(jsonData.map(d => d.Month))));
@@ -43,15 +41,20 @@ function populateSelect(select, options) {
     });
 }
 
-// --- Обработчики изменения фильтров ---
 [brandFilter, monthFilter, carrierFilter, advertiserFilter].forEach(sel => {
     sel.addEventListener("change", () => {
-        filters[sel.id.replace("Filter", "")] = sel.value;
+        // напрямую по ключу JSON
+        const keyMap = {
+            brandFilter: "Brand",
+            monthFilter: "Month",
+            carrierFilter: "Carrier type",
+            advertiserFilter: "Advertiser"
+        };
+        filters[keyMap[sel.id]] = sel.value;
         updateResults();
     });
 });
 
-// --- Фильтрация и отображение количества файлов ---
 function updateResults() {
     const filtered = jsonData.filter(d =>
         (filters.Brand === "Все" || d.Brand === filters.Brand) &&
@@ -62,5 +65,3 @@ function updateResults() {
 
     resultsCounter.textContent = `Файлов в архиве: ${filtered.length}`;
 }
-
-// --- На этом этапе архив формируется через сервер при нажатии кнопки "Download Selected" ---
