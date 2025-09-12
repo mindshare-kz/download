@@ -5,60 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Download Service</title>
 <link rel="stylesheet" href="style.css">
+<!-- Подключаем иконки из Font Awesome для кнопки -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
 <h1>Download Service</h1>
 
 <div id="filters">
-  <div class="filter">
+  <div>
     <label for="monthFilter">Month</label>
     <select id="monthFilter">
-      <option value="">All</option>
-      <option value="Jan">Jan</option>
-      <option value="Feb">Feb</option>
-      <option value="Mar">Mar</option>
+      <option value="">Все</option>
     </select>
   </div>
-
-  <div class="filter">
+  <div>
     <label for="advertiserFilter">Advertiser</label>
     <select id="advertiserFilter">
-      <option value="">All</option>
-      <option value="CocaCola">CocaCola</option>
-      <option value="Pepsi">Pepsi</option>
+      <option value="">Все</option>
     </select>
   </div>
-
-  <div class="filter">
+  <div>
     <label for="brandFilter">Brand</label>
     <select id="brandFilter">
-      <option value="">All</option>
-      <option value="Coke">Coke</option>
-      <option value="Sprite">Sprite</option>
-      <option value="Fanta">Fanta</option>
+      <option value="">Все</option>
     </select>
   </div>
-
-  <div class="filter">
+  <div>
     <label for="carrierFilter">Carrier Type</label>
     <select id="carrierFilter">
-      <option value="">All</option>
-      <option value="TV">TV</option>
-      <option value="OOH">OOH</option>
-      <option value="Online">Online</option>
+      <option value="">Все</option>
     </select>
   </div>
 </div>
 
-<div id="fileCount">Files in archive: 0</div>
+<div id="results">Файлов в архиве: <span id="fileCount">0</span></div>
 
 <button id="downloadSelected">
-  <!-- Inline SVG иконка скачивания -->
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M5 20h14v-2H5v2zm7-18l-5.5 5.5 1.42 1.42L11 6.84V16h2V6.83l3.08 3.08 1.42-1.42L12 2z"/>
-  </svg>
-  Download
+  <i class="fas fa-download"></i> Скачать
 </button>
 
 <script src="script.js"></script>
