@@ -21,10 +21,11 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(2, 1fr); /* две колонки */
+  gap: 15px 20px; /* строки и колонки */
   margin: 20px 0;
 }
+
 
 .filter label {
   display: block;
