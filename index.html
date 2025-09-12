@@ -1,19 +1,41 @@
-<section id="filters">
-  <h2>Filters</h2>
-  <div class="filter-group">
-    <label for="monthFilter">Month:</label>
-    <select id="monthFilter"><option value="all">All</option></select>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Service</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <h1>Фильтры для загрузки</h1>
+
+  <div class="filters">
+    <div class="filter">
+      <label>Month</label>
+      <select id="monthFilter"></select>
+    </div>
+    <div class="filter">
+      <label>Advertiser</label>
+      <select id="advertiserFilter"></select>
+    </div>
+    <div class="filter">
+      <label>Brand</label>
+      <select id="brandFilter"></select>
+    </div>
+    <div class="filter">
+      <label>Carrier Type</label>
+      <select id="carrierFilter"></select>
+    </div>
   </div>
-  <div class="filter-group">
-    <label for="advertiserFilter">Advertiser:</label>
-    <select id="advertiserFilter"><option value="all">All</option></select>
+
+  <div class="selected-info">
+    <span>Файлов в архиве: <span id="fileCount">0</span></span>
   </div>
-  <div class="filter-group">
-    <label for="brandFilter">Brand:</label>
-    <select id="brandFilter"><option value="all">All</option></select>
-  </div>
-  <div class="filter-group">
-    <label for="carrierFilter">Carrier Type:</label>
-    <select id="carrierFilter"><option value="all">All</option></select>
-  </div>
-</section>
+
+  <button id="downloadSelected">Скачать выбранные</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
