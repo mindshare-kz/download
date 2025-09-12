@@ -7,37 +7,58 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-  <h1>Фильтры для загрузки</h1>
+
+<h1>Download Service</h1>
 
 <div id="filters">
   <div class="filter">
-    <label>Month</label>
-    <select id="monthFilter"></select>
+    <label for="monthFilter">Month</label>
+    <select id="monthFilter">
+      <option value="">All</option>
+      <option value="Jan">Jan</option>
+      <option value="Feb">Feb</option>
+      <option value="Mar">Mar</option>
+    </select>
   </div>
+
   <div class="filter">
-    <label>Carrier Type</label>
-    <select id="carrierFilter"></select>
+    <label for="advertiserFilter">Advertiser</label>
+    <select id="advertiserFilter">
+      <option value="">All</option>
+      <option value="CocaCola">CocaCola</option>
+      <option value="Pepsi">Pepsi</option>
+    </select>
   </div>
+
   <div class="filter">
-    <label>Advertiser</label>
-    <select id="advertiserFilter"></select>
+    <label for="brandFilter">Brand</label>
+    <select id="brandFilter">
+      <option value="">All</option>
+      <option value="Coke">Coke</option>
+      <option value="Sprite">Sprite</option>
+      <option value="Fanta">Fanta</option>
+    </select>
   </div>
+
   <div class="filter">
-    <label>Brand</label>
-    <select id="brandFilter"></select>
+    <label for="carrierFilter">Carrier Type</label>
+    <select id="carrierFilter">
+      <option value="">All</option>
+      <option value="TV">TV</option>
+      <option value="OOH">OOH</option>
+      <option value="Online">Online</option>
+    </select>
   </div>
 </div>
 
-  <div class="selected-info">
-    <span>Выбрано файлов: <span id="fileCount">0</span></span>
-  </div>
+<div id="fileCount">Files in archive: 0</div>
 
-  <button id="downloadSelected" class="download-btn">
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12v8m0 0l-4-4m4 4l4-4M12 4v8"/>
+<button id="downloadSelected">
+  <!-- Inline SVG иконка скачивания -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M5 20h14v-2H5v2zm7-18l-5.5 5.5 1.42 1.42L11 6.84V16h2V6.83l3.08 3.08 1.42-1.42L12 2z"/>
   </svg>
-  Скачать
+  Download
 </button>
 
 <script src="script.js"></script>
