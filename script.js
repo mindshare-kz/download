@@ -3,7 +3,9 @@ let filters = {
     Brand: "Все",
     Month: "Все",
     "Carrier type": "Все",
-    Advertiser: "Все"
+    Advertiser: "Все",
+    Category: "Все",
+    Subcategory: "Все"
 };
 
 const brandFilter = document.getElementById("brandFilter");
