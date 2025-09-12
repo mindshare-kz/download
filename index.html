@@ -5,44 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Download Service</title>
 <link rel="stylesheet" href="style.css">
-<!-- Подключаем иконки из Font Awesome для кнопки -->
+<!-- Подключаем иконки Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-
 <h1>Download Service</h1>
 
 <div id="filters">
   <div>
     <label for="monthFilter">Month</label>
     <select id="monthFilter">
-      <option value="">Все</option>
+      <option value="">All</option>
     </select>
   </div>
   <div>
     <label for="advertiserFilter">Advertiser</label>
     <select id="advertiserFilter">
-      <option value="">Все</option>
+      <option value="">All</option>
     </select>
   </div>
   <div>
     <label for="brandFilter">Brand</label>
     <select id="brandFilter">
-      <option value="">Все</option>
+      <option value="">All</option>
     </select>
   </div>
   <div>
     <label for="carrierFilter">Carrier Type</label>
     <select id="carrierFilter">
-      <option value="">Все</option>
+      <option value="">All</option>
     </select>
   </div>
 </div>
 
-<div id="results">Файлов в архиве: <span id="fileCount">0</span></div>
+<div id="results">
+  Files in archive: <span id="fileCount">0</span>
+</div>
 
 <button id="downloadSelected">
-  <i class="fas fa-download"></i> Скачать
+  <i class="fa-solid fa-download"></i>
+  Download
 </button>
 
 <script src="script.js"></script>
