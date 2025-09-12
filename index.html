@@ -9,43 +9,46 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-<h1>Download Service</h1>
 
-<div id="filters">
-  <div>
-    <label for="monthFilter">Month</label>
-    <select id="monthFilter">
-      <option value="">All</option>
-    </select>
+<div class="card">
+  <h1>Download Service</h1>
+
+  <div id="filters">
+    <div>
+      <label for="monthFilter">Month</label>
+      <select id="monthFilter">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div>
+      <label for="advertiserFilter">Advertiser</label>
+      <select id="advertiserFilter">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div>
+      <label for="brandFilter">Brand</label>
+      <select id="brandFilter">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div>
+      <label for="carrierFilter">Carrier Type</label>
+      <select id="carrierFilter">
+        <option value="">All</option>
+      </select>
+    </div>
   </div>
-  <div>
-    <label for="advertiserFilter">Advertiser</label>
-    <select id="advertiserFilter">
-      <option value="">All</option>
-    </select>
+
+  <div id="results">
+    Files in archive: <span id="fileCount">0</span>
   </div>
-  <div>
-    <label for="brandFilter">Brand</label>
-    <select id="brandFilter">
-      <option value="">All</option>
-    </select>
-  </div>
-  <div>
-    <label for="carrierFilter">Carrier Type</label>
-    <select id="carrierFilter">
-      <option value="">All</option>
-    </select>
-  </div>
+
+  <button id="downloadSelected">
+    <i class="fa-solid fa-download"></i>
+    Download
+  </button>
 </div>
-
-<div id="results">
-  Files in archive: <span id="fileCount">0</span>
-</div>
-
-<button id="downloadSelected">
-  <i class="fa-solid fa-download"></i>
-  Download
-</button>
 
 <script src="script.js"></script>
 </body>
